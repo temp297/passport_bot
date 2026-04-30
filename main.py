@@ -110,7 +110,7 @@ async def process_nights(message: types.Message, state: FSMContext):
     result = (
         f"Для отримання візи до країни **{country}** — термін дії паспорта повинен бути не менше ніж до:\n\n"
         f"👉 **{final_dt.strftime('%d.%m.%Y')}**\n\n"
-        f"_(Вимога: +{buffer_days} днів з кінця поїздки)_"
+        f"_(Вимога: +{buffer_days} дні з кінця поїздки)_"
     )
     
     await message.answer(result, parse_mode="Markdown")
