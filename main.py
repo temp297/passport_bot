@@ -11,7 +11,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 
 # ВАШІ ДАНІ
-API_TOKEN = '8507313496:AAE-sPawQ0JdJp4heCreq_zJKCDZmLTSy50'
+API_TOKEN = '8507313496:AAFwMgd5SAdGWgxWhs1Tel0GcmDTwKyFIgo'
 
 # НАЛАШТУВАННЯ КРАЇН ТА ДНІВ
 COUNTRY_RULES = {
