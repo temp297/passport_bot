@@ -10,6 +10,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 
+
 # ВАШІ ДАНІ
 API_TOKEN = os.getenv("API_TOKEN")
 
