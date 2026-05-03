@@ -70,6 +70,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         
     await state.set_state(Form.country)
 
+# Обробка вибору країни через кнопки
 @dp.callback_query(F.data.startswith("select_"), Form.country)
 async def process_country(callback: types.CallbackQuery, state: FSMContext):
     country = callback.data.split("_")[1]
@@ -81,6 +82,11 @@ async def process_country(callback: types.CallbackQuery, state: FSMContext):
         reply_markup=await SimpleCalendar().start_calendar()
     )
     await state.set_state(Form.start_date)
+
+# Обробка ручного введення країни (помилка)
+@dp.message(Form.country)
+async def process_country_invalid(message: types.Message):
+    await message.answer("⚠️ Будь ласка, оберіть країну, натиснувши на відповідну кнопку в меню.")
 
 @dp.callback_query(SimpleCalendarCallback.filter(), Form.start_date)
 async def process_simple_calendar(callback_query: types.CallbackQuery, callback_data: SimpleCalendarCallback, state: FSMContext):
@@ -114,7 +120,6 @@ async def process_nights(message: types.Message, state: FSMContext):
     
     final_dt = start_dt + timedelta(days=nights) + timedelta(days=buffer_days)
     
-    # ВИПРАВЛЕНИЙ РЯДОК:
     result = (
         f"Для отримання візи до країни **{country}** — термін дії паспорта повинен бути не менше ніж до:\n\n"
         f"👉 **{final_dt.strftime('%d.%m.%Y')}**\n\n"
