@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.utils.keyboard import InlineKeyboardBuilder # Змінено на Inline
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 
 # ВАШІ ДАНІ
@@ -42,7 +42,6 @@ class Form(StatesGroup):
 def get_start_keyboard():
     builder = InlineKeyboardBuilder()
     for country in COUNTRY_RULES.keys():
-        # Додаємо callback_data, щоб розпізнати країну
         builder.add(types.InlineKeyboardButton(text=country, callback_data=f"select_{country}"))
     builder.adjust(2)
     return builder.as_markup()
@@ -64,7 +63,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
         "Оберіть країну відпочинку:"
     )
     
-    # Якщо це callback, редагуємо повідомлення, якщо команда - відправляємо нове
     if isinstance(message, types.CallbackQuery):
         await message.message.edit_text(text, reply_markup=get_start_keyboard())
     else:
@@ -116,9 +114,10 @@ async def process_nights(message: types.Message, state: FSMContext):
     
     final_dt = start_dt + timedelta(days=nights) + timedelta(days=buffer_days)
     
+    # ВИПРАВЛЕНИЙ РЯДОК:
     result = (
         f"Для отримання візи до країни **{country}** — термін дії паспорта повинен бути не менше ніж до:\n\n"
-        f"👉 **{final_dt.strftime('%d.%m('%d.%m.%Y')}**\n\n"
+        f"👉 **{final_dt.strftime('%d.%m.%Y')}**\n\n"
         f"_(Вимога: +{buffer_days} дні з кінця поїздки)_"
     )
     
