@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from aiohttp import web  # Додано для веб-сервера
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -85,6 +85,7 @@ async def process_country(message: types.Message, state: FSMContext):
 @dp.callback_query(SimpleCalendarCallback.filter(), Form.start_date)
 async def process_simple_calendar(callback_query: types.CallbackQuery, callback_data: SimpleCalendarCallback, state: FSMContext):
     selected, date = await SimpleCalendar().process_selection(callback_query, callback_data)
+    
     if selected:
         await state.update_data(start_date=date.strftime("%d.%m.%Y"))
         await callback_query.message.answer(
@@ -92,6 +93,13 @@ async def process_simple_calendar(callback_query: types.CallbackQuery, callback_
             "Скільки ночей Ви плануєте відпочивати?"
         )
         await state.set_state(Form.nights)
+    else:
+        await callback_query.answer()
+
+# Новий обробник для захисту від введення дати вручну
+@dp.message(Form.start_date)
+async def process_manual_date(message: types.Message):
+    await message.answer("⚠️ Будь ласка, оберіть дату, натиснувши на відповідну кнопку в календарі.")
 
 @dp.message(Form.nights)
 async def process_nights(message: types.Message, state: FSMContext):
@@ -133,20 +141,15 @@ async def start_web_server():
     await site.start()
 
 async def main():
-    # Запуск веб-сервера у фоні
-    asyncio.create_task(start_web_server())
+    # Запуск веб-сервера
+    await start_web_server()
     
     await bot.set_my_commands([
         types.BotCommand(command="start", description="Запустити розрахунок")
     ])
     
-    # Цикл для стійкості бота
-    while True:
-        try:
-            await dp.start_polling(bot)
-        except Exception as e:
-            logging.error(f"Помилка підключення: {e}")
-            await asyncio.sleep(5)
+    # Запуск бота (без нескінченного циклу)
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
