@@ -7,7 +7,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder # Змінено на Inline
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 
 # ВАШІ ДАНІ
@@ -29,7 +29,6 @@ COUNTRY_RULES = {
 }
 
 logging.basicConfig(level=logging.INFO)
-# На Render використовуємо чистий Bot без проксі
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
@@ -38,46 +37,49 @@ class Form(StatesGroup):
     start_date = State()
     nights = State()
 
-# --- КЛАВІАТУРИ (Твоя логіка) ---
+# --- КЛАВІАТУРИ (Inline) ---
 
 def get_start_keyboard():
-    builder = ReplyKeyboardBuilder()
+    builder = InlineKeyboardBuilder()
     for country in COUNTRY_RULES.keys():
-        builder.add(types.KeyboardButton(text=country))
+        # Додаємо callback_data, щоб розпізнати країну
+        builder.add(types.InlineKeyboardButton(text=country, callback_data=f"select_{country}"))
     builder.adjust(2)
-    return builder.as_markup(resize_keyboard=True, one_time_keyboard=True)
+    return builder.as_markup()
 
 def get_restart_button():
-    builder = ReplyKeyboardBuilder()
-    builder.add(types.KeyboardButton(text="🔄 НОВИЙ РОЗРАХУНОК"))
-    return builder.as_markup(resize_keyboard=True)
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(text="🔄 НОВИЙ РОЗРАХУНОК", callback_data="restart"))
+    return builder.as_markup()
 
-# --- ОБРОБНИКИ (Твоя логіка) ---
+# --- ОБРОБНИКИ ---
 
-@dp.message(F.text == "🔄 НОВИЙ РОЗРАХУНОК")
+@dp.callback_query(F.data == "restart")
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer(
+    text = (
         "👋 Вітаю!\n"
         "Я допоможу Вам перевірити термін дії закордонного паспорта для отримання візи.\n\n"
-        "Оберіть країну відпочинку:",
-        reply_markup=get_start_keyboard()
+        "Оберіть країну відпочинку:"
     )
+    
+    # Якщо це callback, редагуємо повідомлення, якщо команда - відправляємо нове
+    if isinstance(message, types.CallbackQuery):
+        await message.message.edit_text(text, reply_markup=get_start_keyboard())
+    else:
+        await message.answer(text, reply_markup=get_start_keyboard())
+        
     await state.set_state(Form.country)
 
-@dp.message(Form.country)
-async def process_country(message: types.Message, state: FSMContext):
-    if message.text not in COUNTRY_RULES:
-        if message.text == "🔄 НОВИЙ РОЗРАХУНОК":
-            await cmd_start(message, state)
-            return
-        await message.answer("Будь ласка, оберіть країну з кнопок.")
-        return
-        
-    await state.update_data(country=message.text)
-    await message.answer(
-        f"🌍 Обрано: {message.text}\nТепер оберіть дату початку подорожі на календарі:",
+@dp.callback_query(F.data.startswith("select_"), Form.country)
+async def process_country(callback: types.CallbackQuery, state: FSMContext):
+    country = callback.data.split("_")[1]
+    
+    await state.update_data(country=country)
+    
+    await callback.message.edit_text(
+        f"🌍 Обрано: {country}\nТепер оберіть дату початку подорожі на календарі:",
         reply_markup=await SimpleCalendar().start_calendar()
     )
     await state.set_state(Form.start_date)
@@ -88,7 +90,7 @@ async def process_simple_calendar(callback_query: types.CallbackQuery, callback_
     
     if selected:
         await state.update_data(start_date=date.strftime("%d.%m.%Y"))
-        await callback_query.message.answer(
+        await callback_query.message.edit_text(
             f"✅ Дата вильоту: {date.strftime('%d.%m.%Y')}\n\n"
             "Скільки ночей Ви плануєте відпочивати?"
         )
@@ -96,7 +98,6 @@ async def process_simple_calendar(callback_query: types.CallbackQuery, callback_
     else:
         await callback_query.answer()
 
-# Новий обробник для захисту від введення дати вручну
 @dp.message(Form.start_date)
 async def process_manual_date(message: types.Message):
     await message.answer("⚠️ Будь ласка, оберіть дату, натиснувши на відповідну кнопку в календарі.")
@@ -117,7 +118,7 @@ async def process_nights(message: types.Message, state: FSMContext):
     
     result = (
         f"Для отримання візи до країни **{country}** — термін дії паспорта повинен бути не менше ніж до:\n\n"
-        f"👉 **{final_dt.strftime('%d.%m.%Y')}**\n\n"
+        f"👉 **{final_dt.strftime('%d.%m('%d.%m.%Y')}**\n\n"
         f"_(Вимога: +{buffer_days} дні з кінця поїздки)_"
     )
     
@@ -135,20 +136,15 @@ async def start_web_server():
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    # Render автоматично надає порт через змінну оточення PORT
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
 async def main():
-    # Запуск веб-сервера
     await start_web_server()
-    
     await bot.set_my_commands([
         types.BotCommand(command="start", description="Запустити розрахунок")
     ])
-    
-    # Запуск бота (без нескінченного циклу)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
